@@ -96,7 +96,7 @@ The application provides an intuitive dashboard, detailed analytics, budget mana
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Biraj-Sarkar/Monai.git
 cd monai
 ```
 
