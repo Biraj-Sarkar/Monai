@@ -154,18 +154,33 @@ http://localhost:5173
 ```text
 Monai/
 │
-├── frontend/
-│   ├── src/
-│   ├── components/
-│   ├── pages/
-│   └── assets/
+├── Monai/
+│ ├── public 
+│ ├── src 
+│ │ ├── assets 
+│ │ ├── common 
+│ │ ├── components 
+│ │ ├── dashboard 
+│ │ ├── home 
+│ │ ├── layouts 
+│ │ ├── pages 
+│ │ ├── store 
+│ │ ├── support 
+│ │ ├── utils 
+│ │ ├── App.jsx 
+│ │ └── main.jsx 
+│ ├── package.json 
+│ └── vite.config.js
 │
-├── backend/
-│   ├── controllers/
+├── Backend/
+│   ├── config/
+│   ├── middleware/
 │   ├── models/
 │   ├── routes/
-│   ├── middleware/
-│   └── utils/
+│   ├── scripts/
+│   ├── services/
+│   ├── package.json
+│   └── server.js
 │
 └── README.md
 ```
