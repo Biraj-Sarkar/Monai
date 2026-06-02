@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import { useDispatch } from "react-redux";
 import { GoogleLogin } from "@react-oauth/google";
@@ -14,6 +14,8 @@ const Register = () => {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const [googleButtonWidth, setGoogleButtonWidth] = useState(384);
+  const googleButtonRef = useRef(null);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -21,6 +23,22 @@ const Register = () => {
   const handleChange = (e) => {
     setRegisterData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
+
+  useEffect(() => {
+    const updateGoogleButtonWidth = () => {
+      if (!googleButtonRef.current) return;
+      setGoogleButtonWidth(Math.min(Math.floor(googleButtonRef.current.offsetWidth), 400));
+    };
+
+    updateGoogleButtonWidth();
+
+    const observer = new ResizeObserver(updateGoogleButtonWidth);
+    if (googleButtonRef.current) {
+      observer.observe(googleButtonRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -177,14 +195,14 @@ const Register = () => {
             <div className="flex-1 h-px bg-white/5" />
           </div>
 
-          <div className="overflow-hidden rounded-lg">
+          <div ref={googleButtonRef} className="overflow-hidden rounded-lg">
               <GoogleLogin
                 onSuccess={handleGoogleRegister}
                 onError={() => setError("Google sign up failed")}
                 theme="filled_black"
                 size="large"
                 text="signup_with"
-                width="100%"
+                width={`${googleButtonWidth}`}
               />
           </div>
 

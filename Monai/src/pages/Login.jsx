@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router";
 import { useDispatch } from "react-redux";
 import { GoogleLogin } from "@react-oauth/google";
@@ -9,6 +9,8 @@ const API_URL = import.meta.env.VITE_API_URL;
 const Login = () => {
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [googleButtonWidth, setGoogleButtonWidth] = useState(384);
+  const googleButtonRef = useRef(null);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -17,6 +19,22 @@ const Login = () => {
   const handleChange = (e) => {
     setLoginData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
+
+  useEffect(() => {
+    const updateGoogleButtonWidth = () => {
+      if (!googleButtonRef.current) return;
+      setGoogleButtonWidth(Math.min(Math.floor(googleButtonRef.current.offsetWidth), 400));
+    };
+
+    updateGoogleButtonWidth();
+
+    const observer = new ResizeObserver(updateGoogleButtonWidth);
+    if (googleButtonRef.current) {
+      observer.observe(googleButtonRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -151,14 +169,14 @@ const Login = () => {
             <div className="flex-1 h-px bg-white/5" />
           </div>
 
-          <div className="overflow-hidden rounded-lg">
+          <div ref={googleButtonRef} className="overflow-hidden rounded-lg">
               <GoogleLogin
                 onSuccess={handleGoogleLogin}
                 onError={() => setError("Google sign in failed")}
                 theme="filled_black"
                 size="large"
                 text="signin_with"
-                width="100%"
+                width={`${googleButtonWidth}`}
               />
           </div>
 
