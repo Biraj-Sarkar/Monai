@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router";
 import { useDispatch } from "react-redux";
+import { GoogleLogin } from "@react-oauth/google";
 import { loginSucess } from "../utils/authSlice";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -51,6 +52,36 @@ const Login = () => {
       navigate(dest);
     } catch (err) {
       setError(err.message || "Login failed");
+    }
+  };
+
+  const handleGoogleLogin = async (googleResponse) => {
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ credential: googleResponse.credential })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Google sign in failed");
+      }
+
+      const payload = data.data || data;
+
+      dispatch(
+        loginSucess({ userInfo: payload.user, userToken: payload.token })
+      );
+
+      const dest = location?.state?.from || '/dashboard';
+      navigate(dest);
+    } catch (err) {
+      setError(err.message || "Google sign in failed");
     }
   };
 
@@ -120,26 +151,15 @@ const Login = () => {
             <div className="flex-1 h-px bg-white/5" />
           </div>
 
-          <div className="flex gap-3">
-            <button type="button" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-white/6 bg-white/3 px-3 py-2 text-sm text-white hover:bg-white/5">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                <path d="M21 12.23c0-.74-.07-1.29-.22-1.86H12v3.52h5.48c-.11.95-.7 2.35-2.1 3.2l-.02.13 3.04 2.36.21.02c1.9-1.76 3-4.3 3-7.37z" fill="#4285F4"/>
-                <path d="M12 22c2.7 0 4.9-.9 6.53-2.45l-3.12-2.42c-.86.57-1.98.97-3.41.97-2.62 0-4.84-1.77-5.63-4.15l-.12.01-3.07 2.37-.04.11C4.99 19.9 8.2 22 12 22z" fill="#34A853"/>
-                <path d="M6.37 13.95A6.01 6.01 0 0 1 6 12c0-.66.11-1.3.32-1.9l-.02-.13-3.07-2.37-.1.05A9.99 9.99 0 0 0 2 12c0 1.6.36 3.12 1 4.49l3.37-2.54z" fill="#FBBC05"/>
-                <path d="M12 6.5c1.47 0 2.78.5 3.81 1.47l2.85-2.85C16.92 3.34 14.7 2 12 2 8.2 2 4.99 4.1 3.5 7.12l3.07 2.37C7.16 7.77 9.38 6.5 12 6.5z" fill="#EA4335"/>
-              </svg>
-              <span>Google</span>
-            </button>
-
-            <button type="button" className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-white/6 bg-white/3 px-3 py-2 text-sm text-white hover:bg-white/5">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                <rect x="3" y="3" width="8" height="8" fill="#F35325"/>
-                <rect x="13" y="3" width="8" height="8" fill="#81BC06"/>
-                <rect x="3" y="13" width="8" height="8" fill="#05A6F0"/>
-                <rect x="13" y="13" width="8" height="8" fill="#FFB900"/>
-              </svg>
-              <span>Microsoft</span>
-            </button>
+          <div className="overflow-hidden rounded-lg">
+              <GoogleLogin
+                onSuccess={handleGoogleLogin}
+                onError={() => setError("Google sign in failed")}
+                theme="filled_black"
+                size="large"
+                text="signin_with"
+                width="100%"
+              />
           </div>
 
           <p className="mt-6 text-center text-sm text-slate-400">Don't have an account? <NavLink to="/register" className="text-white font-medium">Sign up</NavLink></p>

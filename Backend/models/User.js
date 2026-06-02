@@ -14,10 +14,30 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
+  authProvider: {
+    type: String,
+    enum: ["local", "google"],
+    default: "local"
+  },
   password: {
     type: String,
-    required: true,
+    required: function () {
+      return this.authProvider === "local";
+    },
     minLength: 8
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  avatar: {
+    type: String,
+    default: ""
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
   },
   lifestyleTag: {
     type: [String],
@@ -35,7 +55,7 @@ const UserSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 UserSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
+  if (!this.isModified('password') || !this.password) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
