@@ -1,4 +1,5 @@
 import express from "express";
+import { Parser } from "json2csv";
 import Expense from "../models/Expense.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import { validateExpense } from "../middleware/validators.js";
@@ -11,6 +12,15 @@ const lastAutoInsightRefreshAtByUser = new Map();
 
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+const sanitizeCsvCell = (value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const stringValue = String(value);
+  return /^[=+\-@]/.test(stringValue) ? `'${stringValue}` : stringValue;
 };
 
 const refreshInsightsSafely = (userId) => {
@@ -100,6 +110,30 @@ router.put('/update/:expenseId', authMiddleware, validateExpense, asyncHandler(a
   });
 
   refreshInsightsSafely(userId);
+}));
+
+// 📊 EXPORT DATA
+router.get('/export-csv', authMiddleware, asyncHandler(async (req, res, next) => {
+  const userId = req.user.userId;
+  const expenses = await Expense.find({ userId: userId }).sort({ date: -1 }).lean();
+
+  const rows = expenses.map(e => ({
+    _id: e._id ? String(e._id) : '',
+    date: e.date ? new Date(e.date).toISOString() : '',
+    category: sanitizeCsvCell(e.category),
+    amount: e.amount ?? '',
+    note: sanitizeCsvCell(e.note)
+  }));
+
+  const fields = ['_id', 'date', 'category', 'amount', 'note'];
+  const json2csvParser = new Parser({ fields });
+  const csvData = json2csvParser.parse(rows);
+
+  // Disable caching to avoid 304 responses for downloads
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${String(userId)}_expenses_export.csv"`);
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).send('\uFEFF' + csvData);
 }));
 
 export default router;

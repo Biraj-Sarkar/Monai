@@ -6,6 +6,7 @@ import {
 	DollarSign,
 	PieChart,
 	Plus,
+	Download,
 	Target,
 	TrendingUp,
 	Wallet,
@@ -664,6 +665,7 @@ export default function Dashboard() {
 	const [editingExpense, setEditingExpense] = useState(null);
 	const [expenseToDelete, setExpenseToDelete] = useState(null);
 	const [isBreakdownOpen, setIsBreakdownOpen] = useState(false);
+	const [isExporting, setIsExporting] = useState(false);
 	const [selectedPeriod, setSelectedPeriod] = useState("30D");
 	const [dateRange, setDateRange] = useState(getPeriodRange(30));
 
@@ -788,6 +790,33 @@ export default function Dashboard() {
 		}
 	};
 
+	const handleExportCsv = async () => {
+		try {
+			setIsExporting(true);
+			const response = await authFetch(dispatch, `${API_URL}/api/expenses/export-csv`, { method: "GET" });
+			if (!response.ok) throw new Error("Failed to export expenses.");
+
+			const blob = await response.blob();
+			const objectUrl = URL.createObjectURL(blob);
+			const disposition = response.headers.get("Content-Disposition") || "";
+			const filenameMatch = disposition.match(/filename="([^"]+)"/i);
+			const downloadLink = document.createElement("a");
+
+			downloadLink.href = objectUrl;
+			downloadLink.download = filenameMatch?.[1] || "expenses_export.csv";
+			document.body.appendChild(downloadLink);
+			downloadLink.click();
+			downloadLink.remove();
+			URL.revokeObjectURL(objectUrl);
+
+			toast.success("CSV exported");
+		} catch (error) {
+			toast.error("Failed to export CSV.");
+		} finally {
+			setIsExporting(false);
+		}
+	};
+
 	const handlePeriodChange = (label) => {
 		setSelectedPeriod(label);
 		const days = PERIODS.find((p) => p.label === label)?.days || 30;
@@ -822,28 +851,36 @@ export default function Dashboard() {
 					</div>
 
 					<div className="flex flex-col items-start gap-5 lg:items-end">
-						{/* add expense */}
-						<button
-							onClick={() => { setEditingExpense(null); setIsModalOpen(true); }}
-							className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-base font-bold text-white shadow-[0_8px_18px_rgba(37,99,235,0.25)] transition-all duration-200 hover:bg-blue-700 hover:shadow-[0_10px_22px_rgba(37,99,235,0.32)]"
-						>
-							<Plus className="h-5 w-5" />
-							Add Expense
-						</button>
-						<div className="flex flex-wrap items-center gap-3">
-						{/* period toggles */}
-						<div className="flex rounded-lg border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 p-1 text-sm shadow-sm">
-							{PERIODS.map((p) => (
-								<button
-									key={p.label}
-									onClick={() => handlePeriodChange(p.label)}
-									className={`rounded-md px-5 py-2 font-semibold transition-all duration-200 ${selectedPeriod === p.label ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"}`}
-								>
-									{p.label}
-								</button>
-							))}
+						<div className="flex flex-wrap items-center gap-3 lg:justify-end">
+							<button
+								onClick={() => { setEditingExpense(null); setIsModalOpen(true); }}
+								className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-base font-bold text-white shadow-[0_8px_18px_rgba(37,99,235,0.25)] transition-all duration-200 hover:bg-blue-700 hover:shadow-[0_10px_22px_rgba(37,99,235,0.32)]"
+							>
+								<Plus className="h-4 w-4" />
+								Add Expense
+							</button>
+							<button
+								onClick={handleExportCsv}
+								disabled={isExporting}
+								className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-base font-bold text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+							>
+								<Download className="h-4 w-4" />
+								{isExporting ? "Exporting..." : "Export CSV"}
+							</button>
 						</div>
-
+						<div className="flex flex-wrap items-center gap-3">
+							{/* period toggles */}
+							<div className="flex rounded-lg border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 p-1 text-sm shadow-sm">
+								{PERIODS.map((p) => (
+									<button
+										key={p.label}
+										onClick={() => handlePeriodChange(p.label)}
+										className={`rounded-md px-5 py-2 font-semibold transition-all duration-200 ${selectedPeriod === p.label ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"}`}
+									>
+										{p.label}
+									</button>
+								))}
+							</div>
 						</div>
 					</div>
 				</div>
