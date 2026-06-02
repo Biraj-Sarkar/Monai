@@ -9,6 +9,7 @@ import { authRateLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 const client = new OAuth2Client();
+const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 
 const getJwtSecrets = () => {
   const jwtSecret = process.env.JWT_SECRET;
@@ -23,6 +24,36 @@ const getJwtSecrets = () => {
 
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+const getGooglePayload = async ({ credential, accessToken }) => {
+  if (credential) {
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    return ticket.getPayload();
+  }
+
+  if (accessToken) {
+    const tokenInfo = await client.getTokenInfo(accessToken);
+    if (tokenInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+      throw new Error("Google token audience mismatch");
+    }
+
+    const response = await fetch(GOOGLE_USERINFO_URL, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to fetch Google account profile");
+    }
+
+    return response.json();
+  }
+
+  return null;
 };
 
 router.post('/login', authRateLimiter, asyncHandler(async (req, res, next) => {
@@ -142,18 +173,13 @@ router.post('/register', authRateLimiter, asyncHandler(async (req, res, next) =>
 
 router.post('/google', authRateLimiter, asyncHandler(async (req, res, next) => {
   const { jwtSecret, refreshSecret } = getJwtSecrets();
-  const { credential } = req.body;
+  const { credential, accessToken } = req.body;
 
-  if (!credential) {
+  if (!credential && !accessToken) {
     return res.status(400).json({ success: false, message: "Google credential is required" });
   }
 
-  const ticket = await client.verifyIdToken({
-    idToken: credential,
-    audience: process.env.GOOGLE_CLIENT_ID
-  });
-
-  const payload = ticket.getPayload();
+  const payload = await getGooglePayload({ credential, accessToken });
 
   if (!payload?.email || !payload?.sub) {
     return res.status(401).json({ success: false, message: "Invalid Google account payload" });

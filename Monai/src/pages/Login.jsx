@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router";
 import { useDispatch } from "react-redux";
-import { GoogleLogin } from "@react-oauth/google";
+import { useGoogleLogin } from "@react-oauth/google";
 import { loginSucess } from "../utils/authSlice";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -9,8 +9,6 @@ const API_URL = import.meta.env.VITE_API_URL;
 const Login = () => {
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
-  const [googleButtonWidth, setGoogleButtonWidth] = useState(384);
-  const googleButtonRef = useRef(null);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -19,22 +17,6 @@ const Login = () => {
   const handleChange = (e) => {
     setLoginData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
-
-  useEffect(() => {
-    const updateGoogleButtonWidth = () => {
-      if (!googleButtonRef.current) return;
-      setGoogleButtonWidth(Math.min(Math.floor(googleButtonRef.current.offsetWidth), 400));
-    };
-
-    updateGoogleButtonWidth();
-
-    const observer = new ResizeObserver(updateGoogleButtonWidth);
-    if (googleButtonRef.current) {
-      observer.observe(googleButtonRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,7 +55,7 @@ const Login = () => {
     }
   };
 
-  const handleGoogleLogin = async (googleResponse) => {
+  const handleGoogleLogin = async ({ access_token: accessToken }) => {
     setError("");
 
     try {
@@ -81,7 +63,7 @@ const Login = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ credential: googleResponse.credential })
+        body: JSON.stringify({ accessToken })
       });
 
       const data = await res.json();
@@ -102,6 +84,12 @@ const Login = () => {
       setError(err.message || "Google sign in failed");
     }
   };
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: handleGoogleLogin,
+    onError: () => setError("Google sign in failed"),
+    scope: "openid profile email"
+  });
 
   return (
     <div className="app-page-bg min-h-screen flex items-center justify-center relative px-4">
@@ -169,15 +157,20 @@ const Login = () => {
             <div className="flex-1 h-px bg-white/5" />
           </div>
 
-          <div ref={googleButtonRef} className="overflow-hidden rounded-lg">
-              <GoogleLogin
-                onSuccess={handleGoogleLogin}
-                onError={() => setError("Google sign in failed")}
-                theme="filled_black"
-                size="large"
-                text="signin_with"
-                width={`${googleButtonWidth}`}
-              />
+          <div className="rounded-lg">
+            <button
+              type="button"
+              className="w-full inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
+              onClick={() => googleLogin()}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21.6 12.23c0-.74-.07-1.45-.19-2.13H12v4.03h5.38a4.6 4.6 0 0 1-1.99 3.02v2.51h3.23c1.89-1.74 2.98-4.3 2.98-7.43z" fill="#4285F4" />
+                <path d="M12 22c2.7 0 4.96-.89 6.62-2.41l-3.23-2.51c-.9.6-2.04.95-3.39.95-2.6 0-4.8-1.76-5.59-4.12H3.08v2.59A10 10 0 0 0 12 22z" fill="#34A853" />
+                <path d="M6.41 13.91A6 6 0 0 1 6.09 12c0-.66.11-1.31.32-1.91V7.5H3.08A10 10 0 0 0 2 12c0 1.61.39 3.13 1.08 4.5l3.33-2.59z" fill="#FBBC05" />
+                <path d="M12 5.98c1.47 0 2.78.5 3.82 1.49l2.87-2.87A9.6 9.6 0 0 0 12 2 10 10 0 0 0 3.08 7.5l3.33 2.59C7.2 7.72 9.4 5.98 12 5.98z" fill="#EA4335" />
+              </svg>
+              <span>Sign in with Google</span>
+            </button>
           </div>
 
           <p className="mt-6 text-center text-sm text-slate-400">Don't have an account? <NavLink to="/register" className="text-white font-medium">Sign up</NavLink></p>
