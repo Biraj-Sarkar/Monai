@@ -24,11 +24,6 @@ export default function Help() {
       answers:
         "Every expense can be assigned to a category such as Food, Transportation, Shopping, Bills, or Entertainment. The dashboard and analytics pages show category-wise spending breakdowns and charts.",
     },
-    // {
-    //   question: "Can I set a monthly budget?",
-    //   answers:
-    //     "Yes. You can create spending limits for different categories or set an overall monthly budget. The app will help you monitor your progress and identify overspending.",
-    // },
     {
       question: "How do I view my spending history?",
       answers:
@@ -54,11 +49,11 @@ export default function Help() {
       answers:
         "Use the 'Forgot Password' option on the login page. A password reset link or verification process will help you regain access to your account.",
     },
-    // {
-    //   question: "Can I download my expense data?",
-    //   answers:
-    //     "Yes. You can export your transactions and reports in formats such as CSV or Excel for backup, analysis, or record-keeping purposes.",
-    // },
+    {
+      question: "Can I download my expense data?",
+      answers:
+        "Yes. You can export your transactions and reports in formats such as CSV or Excel for backup, analysis, or record-keeping purposes.",
+    },
   ];
 
   return (

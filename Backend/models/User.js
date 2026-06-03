@@ -39,6 +39,14 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  resetPasswordExpires: {
+    type: Date,
+    default: null
+  },
   lifestyleTag: {
     type: [String],
     default: []

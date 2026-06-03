@@ -15,6 +15,8 @@ import Help from "./support/Help.jsx";
 import Terms from "./support/Terms.jsx";
 import Privacy from "./support/Privacy.jsx";
 import Settings from "./support/Settings.jsx"
+import Forget from "./pages/Forget.jsx";
+import Reset from "./pages/Reset.jsx";
 
 const router = createBrowserRouter(
 	createRoutesFromElements(
@@ -22,6 +24,8 @@ const router = createBrowserRouter(
 			<Route path='/' element={<Home />} />
 			<Route path='/login' element={<Login />} />
 			<Route path='/register' element={<Register />} />
+			<Route path='/forgot' element={<Forget />} />
+			<Route path='/reset-password' element={<Reset />} />
 			<Route path='/dashboard' element={<Dashboard />} />
 			<Route path='/insights' element={<Insights />} />
 			<Route path='/contact' element={<Contacts />} />

@@ -1,6 +1,8 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import vestAuthMiddleware from "../middleware/vestAuthMiddleware.js";
@@ -54,6 +56,63 @@ const getGooglePayload = async ({ credential, accessToken }) => {
   }
 
   return null;
+};
+
+const createTransporter = () =>
+  nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL,
+      pass: process.env.PASSWORD,
+    },
+  });
+
+const sendResetEmail = async (email, url) => {
+  const mailOptions = {
+    from: process.env.EMAIL,
+    to: email,
+    subject: "Reset your Monai password",
+    text: `We received a request to reset your Monai password. Open this link to continue: ${url}\n\nThis link expires in 15 minutes. If you did not request this, you can safely ignore this email.`,
+    html: `
+      <div style="margin:0;padding:0;background:#f5f7fb;font-family:Inter,Segoe UI,Arial,sans-serif;">
+        <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
+          <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 45%,#111827 100%);border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 60px rgba(15,23,42,0.18);">
+            <div style="padding:34px 30px 28px;">
+              <div style="display:inline-block;padding:8px 12px;border-radius:999px;background:rgba(59,130,246,0.12);color:#93c5fd;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+                Monai
+              </div>
+
+              <h1 style="margin:18px 0 12px;font-size:30px;line-height:1.15;color:#ffffff;">Reset your password</h1>
+              <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#cbd5e1;">
+                We received a request to reset the password for <strong style="color:#ffffff;">${email}</strong>. Click the button below to choose a new password.
+              </p>
+
+              <div style="margin:26px 0 22px;text-align:center;">
+                <a href="${url}" style="display:inline-block;padding:14px 22px;border-radius:999px;background:linear-gradient(90deg,#2563eb 0%,#7c3aed 100%);color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:.01em;box-shadow:0 12px 24px rgba(37,99,235,0.28);">
+                  Reset password
+                </a>
+              </div>
+
+              <div style="padding:16px 18px;border-radius:18px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);">
+                <p style="margin:0;font-size:13px;line-height:1.7;color:#cbd5e1;">
+                  This link will expire in <strong style="color:#ffffff;">15 minutes</strong> for your security.
+                </p>
+                <p style="margin:10px 0 0;font-size:13px;line-height:1.7;color:#94a3b8;word-break:break-all;">
+                  If the button does not work, copy and paste this URL into your browser:<br />
+                  <span style="color:#bfdbfe;">${url}</span>
+                </p>
+              </div>
+
+              <p style="margin:18px 0 0;font-size:13px;line-height:1.7;color:#94a3b8;">
+                If you did not request this reset, you can ignore this email safely.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+  }
+  await createTransporter().sendMail(mailOptions);
 };
 
 router.post('/login', authRateLimiter, asyncHandler(async (req, res, next) => {
@@ -231,7 +290,60 @@ router.post('/google', authRateLimiter, asyncHandler(async (req, res, next) => {
       user: { id: user._id, name: user.name, email: user.email }
     }
   });
+}));
+
+router.post('/forget-password', asyncHandler(async(req, res, next) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email: email });
+
+  if (!user) {
+    return res.status(401).json({ success: false, message: "If your email exists in our system, you will receive a reset link" });
+  }
+
+  if (user.authProvider === "google" && !user.password) {
+    return res.status(400).json({ success: false, message: "This account uses Google Sign-In." });
+  }
+
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  user.resetPasswordToken = resetToken;
+  user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+
+  await user.save();
+
+  const resetURL = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+  await sendResetEmail(user.email, resetURL);
+
+  return res.status(200).json({ success: true, message: "If your email exists in our system, you will receive a reset link" });
 }))
+
+router.post('/reset-password', asyncHandler(async(req,res)=>{
+  const { token, password } = req.body;
+  const user = await User.findOne({
+    resetPasswordToken: token,
+    resetPasswordExpires: {
+      $gt: Date.now()
+    }
+  });
+
+  if (!user) {
+    return res.status(400).json({ success:false, message:"Reset link expired" });
+  }
+
+  if (!password) {
+    return res.status(400).json({ success: false, message: 'Missing password' });
+  }
+
+  if (password.length < 8) {
+    return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" })
+  }
+
+  user.password = password;
+  user.resetPasswordToken = null;
+  user.resetPasswordExpires = null;
+  await user.save();
+
+  res.status(200).json({ success: true, message: "Your password has been successfully reset." });
+}));
 
 // Agent-only diagnostic route
 router.get('/whoami-agent', vestAuthMiddleware, asyncHandler(async (req, res) => {
