@@ -11,7 +11,7 @@ export default function validateEnv() {
     BACKEND_URL: url({ default: 'http://localhost:5000' }),
     GOOGLE_CLIENT_ID: str(),
     EMAIL: str(),
-    PASSWORD: str()
+    RESEND_API_KEY: str()
   });
 
   // Enforce strong JWT secret

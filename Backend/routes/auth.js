@@ -2,12 +2,12 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import vestAuthMiddleware from "../middleware/vestAuthMiddleware.js";
 import { validateRegister, validateLogin } from "../middleware/validators.js";
 import { authRateLimiter } from "../middleware/rateLimiter.js";
+import { getMailFrom, sendEmail } from "../services/emailService.js";
 
 const router = express.Router();
 const client = new OAuth2Client();
@@ -58,18 +58,9 @@ const getGooglePayload = async ({ credential, accessToken }) => {
   return null;
 };
 
-const createTransporter = () =>
-  nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL,
-      pass: process.env.PASSWORD,
-    },
-  });
-
 const sendResetEmail = async (email, url) => {
   const mailOptions = {
-    from: process.env.EMAIL,
+    from: getMailFrom(),
     to: email,
     subject: "Reset your Monai password",
     text: `We received a request to reset your Monai password. Open this link to continue: ${url}\n\nThis link expires in 15 minutes. If you did not request this, you can safely ignore this email.`,
@@ -112,7 +103,7 @@ const sendResetEmail = async (email, url) => {
       </div>
     `
   }
-  await createTransporter().sendMail(mailOptions);
+  await sendEmail(mailOptions);
 };
 
 router.post('/login', authRateLimiter, asyncHandler(async (req, res, next) => {

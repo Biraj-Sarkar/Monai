@@ -1,6 +1,6 @@
 import express from "express";
-import nodemailer from "nodemailer";
 import Subscribe from "../models/Subscribe.js";
+import { getMailFrom, sendEmail } from "../services/emailService.js";
 
 const router = express.Router();
 
@@ -8,17 +8,8 @@ const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-const createTransporter = () =>
-  nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL,
-      pass: process.env.PASSWORD,
-    },
-  });
-
 const buildWelcomeEmail = ({ email, unsubscribeUrl }) => ({
-  from: process.env.EMAIL,
+  from: getMailFrom(),
   to: email,
   subject: 'Welcome to Expense Tracker updates',
   text: [
@@ -82,23 +73,21 @@ const buildUnsubscribedResponse = (email) => `
 router.post('/', asyncHandler(async (req, res, next) => {
   const { name, email, subject, message } = req.body;
 
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL,
-      pass: process.env.PASSWORD
-    }
-  });
-
   const mailOptions = {
-    from: email,
+    from: getMailFrom(),
     to: process.env.EMAIL,
-    subject: `New Contact Form Submission from ${name}`,
-    text: message
+    replyTo: email,
+    subject: subject || `New Contact Form Submission from ${name}`,
+    text: [
+      `Name: ${name}`,
+      `Email: ${email}`,
+      '',
+      message,
+    ].join('\n')
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendEmail(mailOptions);
     res.status(200).json({ success: true, message: "Email sent successfully!" });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -123,8 +112,7 @@ router.post('/subscribe', asyncHandler(async (req, res) => {
   const backendBaseUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
   const unsubscribeUrl = `${backendBaseUrl.replace(/\/$/, '')}/api/contact/unsubscribe?email=${encodeURIComponent(normalizedEmail)}`;
 
-  const transporter = createTransporter();
-  await transporter.sendMail(buildWelcomeEmail({ email: normalizedEmail, unsubscribeUrl }));
+  await sendEmail(buildWelcomeEmail({ email: normalizedEmail, unsubscribeUrl }));
 
   return res.status(201).json({
     success: true,
